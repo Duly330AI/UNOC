@@ -4,7 +4,7 @@ UNOC Backend - Clean Architecture V2
 Core Models - Single Source of Truth
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -114,8 +114,8 @@ class Device(SQLModel, table=True):
     y: float = Field(default=0.0)
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relationships
     interfaces: list["Interface"] = Relationship(
@@ -138,8 +138,8 @@ class Interface(SQLModel, table=True):
     device_id: int = Field(foreign_key="devices.id", ondelete="CASCADE")
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relationships
     device: Device = Relationship(back_populates="interfaces")
@@ -177,8 +177,8 @@ class Link(SQLModel, table=True):
     b_interface_id: int = Field(foreign_key="interfaces.id", ondelete="CASCADE")
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relationships
     interface_a: Interface = Relationship(
