@@ -1,613 +1,84 @@
-# 🗺️ UNOC V2 - Roadmap
-
-**Project Start:** October 14, 2025  
-**Current Status:** Phase 1 ✅ + Phase 1.5 ✅ + Phase 2 ✅  
-**Latest Update:** October 15, 2025 - **WebSockets Complete!**  
-**Next Phase:** Phase 3 (Management UI)
-
----
-
-## 📊 Phase Overview
-
-| Phase | Status | Duration | Completion |
-|-------|--------|----------|------------|
-| Phase 1: Foundation | ✅ Complete | 1 day | Oct 14, 2025 |
-| **Phase 1.5: Optical Network** | ✅ **Complete** | **1 day** | **Oct 15, 2025** |
-| **Phase 2: Real-Time** | ✅ **Complete** | **1 hour** | **Oct 15, 2025** |
-| **Phase 3.1: Core Management** | ✅ **Complete** | **30 min** | **Oct 15, 2025** |
-| **Phase 3.2: Status Override** | ✅ **Complete** | **2 hours** | **Oct 15, 2025** |
-| Phase 4: Traffic | 📋 Planned | ~5 days | TBD |
-| Phase 5: Production | 📋 Planned | ~7 days | TBD |
-
-**Total Estimated:** ~18 days from start to production-ready MVP
-
----
-
-## ✅ PHASE 1.5: OPTICAL NETWORK FOUNDATION (COMPLETE)
-
-**Goal:** Build complete optical network device provisioning system
-
-**Date:** October 15, 2025
-
-### **Device Types Extended (100%)**
-- [x] 14 device types (from original 3)
-  - 8 Active: BACKBONE_GATEWAY, CORE_ROUTER, EDGE_ROUTER, OLT, AON_SWITCH, ONT, BUSINESS_ONT, AON_CPE
-  - 2 Container: POP, CORE_SITE
-  - 4 Passive: ODF, NVT, SPLITTER, HOP
-- [x] Optical attributes (tx_power_dbm, sensitivity_min_dbm, insertion_loss_db)
-- [x] Parent container support
-
-### **Provisioning Service (100%)**
-- [x] ProvisioningService implementation (`backend/services/provisioning_service.py`)
-- [x] Auto-create interfaces based on device type
-  - OLT: mgmt0 + lo0 + 8 PON ports
-  - AON_SWITCH: mgmt0 + lo0 + 24 Ethernet ports
-  - ONT: eth0
-  - SPLITTER: in0 + 32 out ports
-  - All types properly configured
-- [x] Upstream dependency validation
-  - EDGE requires CORE/BACKBONE
-  - OLT/AON requires EDGE
-  - ONT requires OLT
-  - CPE requires AON
-- [x] Validation bypass option (validate_upstream=False)
-- [x] Duplicate name prevention
-
-### **Link Type Rules (100%)**
-- [x] L1-L9 link validation rules (`backend/constants/link_rules.py`)
-  - L1: BACKBONE ↔ CORE
-  - L2: CORE ↔ EDGE
-  - L3: EDGE ↔ OLT (GPON)
-  - L4: EDGE ↔ AON
-  - L5: OLT ↔ ONT
-  - L6: OLT ↔ BUSINESS_ONT
-  - L7: AON ↔ CPE
-  - L8: Passive inline
-  - L9: Peer-to-peer redundancy
-- [x] Validation functions (validate_link_between_devices, etc.)
-
-### **API Integration (100%)**
-- [x] POST /api/devices/provision endpoint
-- [x] Request model (ProvisionDeviceRequest)
-- [x] Response model (device + interfaces + message)
-- [x] Error handling (400 for validation failures)
-- [x] WebSocket event emission
-
-### **Testing (100%)**
-- [x] 92 tests passing (from original 4)
-  - 20 tests: Device types & optical attributes
-  - 15 tests: Provisioning service
-  - 32 tests: Link type rules
-  - 14 tests: Dependency validation
-  - 11 tests: API endpoint
-- [x] 100% test pass rate
-- [x] Ruff clean (no lint errors)
-
-### **Documentation (100%)**
-- [x] OPTICAL_NETWORK_IMPLEMENTATION_SUMMARY.md
-- [x] Complete usage examples
-- [x] API documentation
-
-**Deliverables:**
-- ✅ 14 device types with optical attributes
-- ✅ Smart provisioning with dependency validation
-- ✅ L1-L9 link type rules
-- ✅ POST /api/devices/provision endpoint
-- ✅ 92 tests passing (100% pass rate)
-
-**Date Completed:** October 15, 2025
-
----
-
-## ✅ PHASE 1: FOUNDATION (COMPLETE)
-
-**Goal:** Build clean foundation with simplified data model
-
-**Completed Tasks:**
-
-### **Backend (100%)**
-- [x] SQLModel models (Device, Interface, Link) with 1 status field
-- [x] FastAPI REST API (CRUD endpoints)
-- [x] PostgreSQL database setup
-- [x] Docker Compose (backend + database)
-- [x] Database connection with async support
-- [x] CASCADE DELETE constraints
-- [x] Seed service (demo topology generator)
-- [x] Manual seed endpoint (`POST /api/seed`)
-- [x] Auto-seed on startup (if DB empty)
-- [x] Health check endpoint (`GET /health`)
-
-### **Testing (100%)**
-- [x] Pytest configuration
-- [x] SQLite in-memory for tests
-- [x] conftest.py fixtures
-- [x] 4 integration tests passing:
-  - Create device
-  - List devices
-  - Delete device
-  - 404 handling
-
-### **Frontend (100%)**
-- [x] Vue 3 + TypeScript + Vite setup
-- [x] Cytoscape.js integration
-- [x] NetworkGraph component
-- [x] API data fetching (devices, interfaces, links)
-- [x] Interface-to-device mapping (for link rendering)
-- [x] Status color coding (green=UP, orange=DEGRADED, red=DOWN)
-- [x] Hierarchical layout visualization
-- [x] Hot reload (Vite HMR)
-
-### **Documentation (100%)**
-- [x] README.md with Quick Start
-- [x] ARCHITECTURE.md with design decisions
-- [x] ROADMAP.md (this file)
-
-**Deliverables:**
-- ✅ Working REST API (9 devices, 7 links seeded)
-- ✅ Working frontend visualization
-- ✅ 4 tests passing
-- ✅ Docker setup
-- ✅ Complete documentation
-
-**Screenshot Evidence:**
-- Browser showing 9 devices (Router1-2, Switch1-2, OLT1, ONT1-4)
-- 7 green/orange links connecting devices
-- Hierarchical topology layout
-- Status colors working correctly
-
-**Date Completed:** October 14, 2025
-
----
-
-## 🚧 PHASE 2: REAL-TIME (COMPLETE ✅)
-
-**Goal:** Add WebSocket support for live updates
-
-**Date:** October 15, 2025  
-**Duration:** ~1 hour
-
-### **Backend Tasks**
-
-- [x] Install `python-socketio` (FastAPI integration) ✅
-- [x] Create WebSocket server in `backend/main.py` ✅
-- [x] Define event types: ✅
-  - `device:created` - New device added
-  - `device:updated` - Device status/position changed
-  - `device:deleted` - Device removed
-  - `link:created` - New link added
-  - `interface:created` - New interface added
-- [x] Emit events on CRUD operations ✅
-- [x] CORS configuration for multiple ports ✅
-- [x] WebSocket health check ✅
-
-### **Frontend Tasks**
-
-- [x] Install `socket.io-client` ✅
-- [x] Create WebSocket connection in `App.vue` ✅
-- [x] Listen to events ✅
-- [x] Update reactive data on events ✅
-- [x] Trigger Cytoscape refresh ✅
-- [x] Connection status indicator (connected/disconnected) ✅
-- [x] Auto-reconnect on disconnect ✅
-
-### **Testing**
-
-- [x] Test event emission (create device → frontend receives event) ✅
-- [x] Test multiple clients (fanout) ✅
-- [x] Test reconnection logic ✅
-- [x] 8 WebSocket integration tests ✅
-
-### **Deliverables**
-
-- ✅ Create device via API → Frontend updates automatically
-- ✅ Update device status → All connected clients see change
-- ✅ Delete device → Removed from all frontends instantly
-- ✅ Connection indicator in UI (🟢 Live / 🔴 Offline)
-- ✅ WebSocket server running on port 5001
-- ✅ Multiple clients supported (fanout working)
-
-**Success Criteria:**
-- ✅ Zero manual browser refresh needed
-- ✅ All clients stay in sync
-- ✅ Reconnection works after server restart
-- ✅ WebSocket connection established in browser
-
-**Date Completed:** October 15, 2025
-
----
-
-## 📋 PHASE 3: MANAGEMENT (IN PROGRESS)
-
-**Goal:** Build management UI for devices and links
-
-**Date Started:** October 15, 2025
-
-### **Part 1: Core Management** ✅ COMPLETE
-
-**Features:**
-- [x] Delete confirmation dialog ✅
-- [x] Drag & drop device positioning ✅
-- [x] Position auto-save to database ✅
-- [x] Click link to delete ✅
-- [x] WebSocket sync for position updates ✅
-- [x] WebSocket sync for link deletion ✅
-
-**Deliverables:**
-- ✅ Safe device deletion with modal
-- ✅ Interactive graph (drag devices)
-- ✅ Link management (click to delete)
-- ✅ Real-time multi-client sync
-
-**Date Completed:** October 15, 2025
-
-### **Part 2: Status Override** ✅ COMPLETE
-
-**Features:**
-- [x] Manual status override button ✅
-- [x] Override indicator badge (visual) ✅
-- [x] Override reason display ✅
-- [x] Clear override button ✅
-- [x] WebSocket sync for overrides ✅
-
-**Deliverables:**
-- ✅ Status override panel in sidebar
-- ✅ Visual indicator (🔒 badge)
-- ✅ Admin force UP/DOWN capability
-- ✅ Override reason tracking
-- ✅ Real-time updates via WebSocket
-
-**Date Completed:** October 15, 2025
-
----
-
-## 📋 PHASE 4: TRAFFIC (FUTURE)
-
-### **Frontend Tasks**
-
-- [ ] Install `socket.io-client`
-- [ ] Create WebSocket connection in `App.vue`
-- [ ] Listen to events
-- [ ] Update Pinia store on events
-- [ ] Trigger Cytoscape refresh
-- [ ] Connection status indicator (connected/disconnected)
-- [ ] Auto-reconnect on disconnect
-
-### **Testing**
-
-- [ ] Test event emission (create device → frontend receives event)
-- [ ] Test multiple clients (fanout)
-- [ ] Test reconnection logic
-- [ ] Test correlation_id passthrough
-
-### **Deliverables**
-
-- ✅ Create device via API → Frontend updates automatically
-- ✅ Update device status → All connected clients see change
-- ✅ Delete device → Removed from all frontends instantly
-- ✅ Connection indicator in UI
-
-**Success Criteria:**
-- Zero manual browser refresh needed
-- All clients stay in sync
-- Reconnection works after server restart
-
----
-
-## 📋 PHASE 3: MANAGEMENT (PLANNED)
-
-**Goal:** Add UI for managing devices and links
-
-**Estimated Duration:** 3 days (~10-12 hours coding)
-
-### **Device Management**
-
-- [ ] Device creation form (modal)
-- [ ] Device type selector (ROUTER, SWITCH, OLT, ONT, SERVER)
-- [ ] Position picker (click on canvas)
-- [ ] Delete confirmation dialog
-- [ ] Bulk device import (CSV/JSON)
-
-### **Link Management**
-
-- [ ] Visual link creation:
-  - Click device A
-  - Click device B
-  - Auto-create interfaces if needed
-  - Create link
-- [ ] Link deletion (click link → delete button)
-- [ ] Interface selection (if device has multiple ports)
-- [ ] Hardware catalog integration (optional):
-  - Define device models (Cisco ASR9k, Juniper MX, etc.)
-  - Auto-create interfaces based on model
-
-### **Status Override**
-
-- [ ] Manual status override (Admin can force device UP/DOWN)
-- [ ] Override indicator (visual badge: "Manual Override")
-- [ ] Override history (who changed what when)
-- [ ] Clear override (revert to computed status)
-
-### **Bulk Operations**
-
-- [ ] Multi-select devices (Ctrl+Click, drag-to-select)
-- [ ] Bulk status change
-- [ ] Bulk delete
-- [ ] Bulk move (drag multiple devices)
-
-### **Deliverables**
-
-- ✅ Create network topology entirely from UI (no API calls)
-- ✅ Drag & drop interface for link creation
-- ✅ Hardware catalog (optional, if time permits)
-- ✅ Status override working
-
-**Success Criteria:**
-- Non-technical user can build topology in UI
-- No need to use `curl` or Postman
-
----
-
-## 📋 PHASE 4: TRAFFIC (PLANNED)
-
-**Goal:** Simulate network traffic and detect congestion
-
-**Estimated Duration:** 5 days (~16-20 hours coding)
-
-### **Tariff System**
-
-- [ ] Tariff model (name, upload_kbps, download_kbps)
-- [ ] CRUD API for tariffs
-- [ ] Assign tariff to ONT (FK: tariff_id)
-- [ ] Default tariffs seeded (100Mbps, 500Mbps, 1Gbps)
-
-### **Traffic Generation**
-
-- [ ] Generate upload/download traffic per ONT based on tariff
-- [ ] Randomization (±10% variance for realism)
-- [ ] Time-of-day variation (peak hours = higher usage)
-- [ ] Asymmetric traffic (download > upload for residential)
-
-### **Traffic Aggregation**
-
-- [ ] Sum child traffic to parent:
-  - ONT1-4 → OLT1
-  - OLT1 → Switch1
-  - Switch1 → Router1
-- [ ] Device traffic = sum of all child traffic
-- [ ] Link traffic = sum of traffic flowing through link
-
-### **Congestion Detection**
-
-- [ ] Define capacity per link (e.g., 1Gbps, 10Gbps)
-- [ ] Utilization = (traffic / capacity) * 100
-- [ ] Congestion threshold: 80% utilization
-- [ ] Hysteresis: Alert at 80%, clear at 70%
-- [ ] Congestion status: Link changes to DEGRADED
-
-### **Traffic Visualization**
-
-- [ ] Show utilization % on links (tooltip or label)
-- [ ] Color code by utilization:
-  - 0-50%: Green
-  - 50-80%: Yellow
-  - 80-100%: Red
-- [ ] Animated traffic flow (particles moving along links)
-
-### **Traffic Metrics**
-
-- [ ] Total network throughput
-- [ ] Per-device throughput
-- [ ] Per-link utilization
-- [ ] Congestion alerts (list of congested links)
-
-### **Deliverables**
-
-- ✅ Tariff system working
-- ✅ Traffic generated based on tariffs
-- ✅ Traffic aggregation correct (parent = sum of children)
-- ✅ Congestion detection with hysteresis
-- ✅ Visual indicators on links
-
-**Success Criteria:**
-- Create ONT with 1Gbps tariff → See traffic generated
-- Traffic aggregates correctly to OLT → Switch → Router
-- Link hits 80% utilization → Changes to DEGRADED
-- Visual traffic flow animation working
-
----
-
-## 📋 PHASE 5: PRODUCTION (PLANNED)
-
-**Goal:** Make UNOC production-ready
-
-**Estimated Duration:** 7 days (~24-30 hours coding)
-
-### **Authentication**
-
-- [ ] JWT token-based auth
-- [ ] Login endpoint (`POST /api/auth/login`)
-- [ ] Token refresh endpoint
-- [ ] Password hashing (bcrypt)
-- [ ] User model (username, password_hash, role)
-
-### **Authorization**
-
-- [ ] Role-based access control (RBAC):
-  - `admin` - Full access
-  - `operator` - Read-only + status override
-  - `viewer` - Read-only
-- [ ] Endpoint permissions (decorator: `@require_role("admin")`)
-- [ ] Frontend permission checks (hide buttons for viewers)
-
-### **Audit Logging**
-
-- [ ] Audit model (user, action, timestamp, details)
-- [ ] Log all mutations:
-  - Device created/updated/deleted
-  - Link created/deleted
-  - Status override
-  - Tariff changes
-- [ ] Audit log viewer (filterable table)
-
-### **Monitoring**
-
-- [ ] Prometheus metrics:
-  - Request count by endpoint
-  - Response time (p50, p95, p99)
-  - Error rate
-  - Active WebSocket connections
-  - Database connection pool usage
-- [ ] Grafana dashboards:
-  - API performance
-  - Traffic statistics
-  - Congestion alerts
-  - System health (CPU, memory, disk)
-
-### **CI/CD Pipeline**
-
-- [ ] GitHub Actions:
-  - Run tests on PR
-  - Lint code (ruff, eslint)
-  - Build Docker images
-  - Push to registry (Docker Hub or GHCR)
-- [ ] Deployment script (Kubernetes YAML):
-  - Backend deployment
-  - Frontend deployment (Nginx)
-  - PostgreSQL StatefulSet
-  - Redis deployment (session storage)
-  - Ingress (HTTPS with cert-manager)
-
-### **Observability**
-
-- [ ] Structured logging (JSON format)
-- [ ] Log aggregation (Loki or ELK)
-- [ ] Error tracking (Sentry)
-- [ ] Distributed tracing (Jaeger, optional)
-
-### **Performance**
-
-- [ ] Database indexing (on frequently queried fields)
-- [ ] Query optimization (EXPLAIN ANALYZE)
-- [ ] Redis caching (for expensive queries)
-- [ ] Frontend bundle optimization (lazy loading)
-- [ ] CDN for static assets
-
-### **Deliverables**
-
-- ✅ Production-ready authentication
-- ✅ RBAC working
-- ✅ Audit log complete
-- ✅ Prometheus + Grafana setup
-- ✅ CI/CD pipeline working
-- ✅ HTTPS with Let's Encrypt
-- ✅ Kubernetes deployment
-
-**Success Criteria:**
-- Deploy to production cluster
-- Handle 100+ concurrent users
-- 99.9% uptime
-- All metrics visible in Grafana
-- Security audit passed
-
----
-
-## 🎯 Milestone Summary
-
-| Milestone | Date | Status |
-|-----------|------|--------|
-| Phase 1: Foundation Complete | Oct 14, 2025 | ✅ Done |
-| Phase 2: WebSockets Complete | TBD | 🚧 Next |
-| Phase 3: Management Complete | TBD | 📋 Planned |
-| Phase 4: Traffic Complete | TBD | 📋 Planned |
-| Phase 5: Production Ready | TBD | 📋 Planned |
-| **V2.0 Launch** | **TBD (~18 days)** | 📋 **Target** |
-
----
-
-## 🚀 Post-Launch (FUTURE)
-
-### **Advanced Features (After V2.0)**
-
-- [ ] Topology auto-discovery (SNMP/LLDP)
-- [ ] Alerting system (email, Slack, PagerDuty)
-- [ ] Historical data (time-series DB like TimescaleDB)
-- [ ] Topology comparison (diff between states)
-- [ ] Automated testing (topology validation)
-- [ ] Multi-tenancy (separate topologies per customer)
-- [ ] REST API v2 (GraphQL for complex queries)
-- [ ] Mobile app (React Native)
-
-### **Scalability (If Needed)**
-
-- [ ] Migrate to GO for traffic engine (if Python too slow)
-- [ ] Event sourcing (store all events, rebuild state)
-- [ ] CQRS (separate read/write models)
-- [ ] Horizontal scaling (multiple backend instances)
-- [ ] Database sharding (if single DB too slow)
-
----
-
-## 📝 Decision Log
-
-### **Decisions Made**
-
-| Date | Decision | Rationale |
-|------|----------|-----------|
-| Oct 14, 2025 | Use Cytoscape.js instead of D3.js | 4x less code, better for network graphs, superior LLM compatibility |
-| Oct 14, 2025 | 1 status field (not 5) | Simplicity, avoid V1 confusion |
-| Oct 14, 2025 | Auto-create interfaces (not hardware catalog) | MVP speed, catalog can be added in Phase 3 |
-| Oct 14, 2025 | API-first for links (not drag & drop) | Backend foundation first, UI later |
-| Oct 14, 2025 | No traffic system in Phase 1 | Foundation first, features later |
-| Oct 14, 2025 | Documentation before next phase | Learn from V1, avoid rushing |
-
-### **Decisions Pending**
-
-| Question | Options | Target Phase |
-|----------|---------|--------------|
-| Hardware catalog? | A) Build in Phase 3, B) Skip for MVP | Phase 3 |
-| GO traffic engine? | A) Keep Python, B) Rewrite in GO if needed | Post-launch |
-| GraphQL? | A) Add in Phase 5, B) Stick with REST | Post-launch |
-
----
-
-## 🏆 Success Metrics
-
-### **Phase 1 (Foundation) - ✅ Achieved**
-- ✅ Backend API working
-- ✅ Frontend visualization working
-- ✅ 4 tests passing
-- ✅ Docker setup
-- ✅ Documentation complete
-
-### **Phase 2 (WebSockets)**
-- ✅ Zero manual refresh needed
-- ✅ All clients stay in sync
-- ✅ Reconnection works
-
-### **Phase 3 (Management)**
-- ✅ Non-technical user can build topology in UI
-- ✅ No curl/Postman needed
-
-### **Phase 4 (Traffic)**
-- ✅ Traffic generation realistic
-- ✅ Congestion detection accurate
-- ✅ Aggregation correct
-
-### **Phase 5 (Production)**
-- ✅ 99.9% uptime
-- ✅ Handle 100+ users
-- ✅ Security audit passed
-
----
-
-## 📚 References
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Design decisions
-- [README.md](README.md) - Quick start guide
-- [V1 Post-Mortem](docs/archive/V1_POSTMORTEM.md) - What went wrong
-
----
-
-**Last Updated:** October 14, 2025  
-**Next Update:** When Phase 2 begins
-
+# UNOC V2 Roadmap
+
+**Last updated:** 24 Oct 2025  
+**Current focus:** Phase 4 - Traffic Engine preparation  
+**Latest milestone:** Phase 3.2 (Status Override) completed 15 Oct 2025
+
+UNOC V2 targets a production-ready FTTH emulator across five major phases. Phases 1 through 3.2 are delivered; the next push is building the tariff-aware traffic engine and congestion tooling.
+
+## Phase Overview
+| Phase | Status | Duration | Completion | Notes |
+|-------|--------|----------|------------|-------|
+| 1. Foundation | Done Complete | 1 day | 14 Oct 2025 | Core CRUD API, Docker Compose, seed service, baseline Vue UI |
+| 1.5 Optical Network | Done Complete | 1 day | 15 Oct 2025 | 14 device types, optical attributes, provisioning rules, link validation |
+| 2. Real-Time | Done Complete | 1 day | 15 Oct 2025 | Socket.IO integration, live device/link events, frontend listeners |
+| 3.1 Management UI | Done Complete | 0.5 day | 15 Oct 2025 | Drag-to-position, device/link management screens, safe updates |
+| 3.2 Status Override | Done Complete | 0.25 day | 15 Oct 2025 | Manual override API/UI, override reason tracking, websocket broadcasts |
+| 4. Traffic Engine | Planned Planned | ~5 days | Target: 24 Oct 2025 | Tariff-based traffic simulation, congestion detection, UI overlays |
+| 5. Production Hardening | Note Planned | ~7 days | Target: Nov 2025 | AuthNZ, audit logging, monitoring, CI/CD, deployment guides |
+
+## Dependency Graph
+- Phase 4 builds on provisioning (Phase 1.5) and live updates (Phase 2) to stream simulated traffic.
+- Phase 5 requires the observability hooks and usage telemetry introduced during Phase 4.
+- Management UI investments from Phase 3.x feed directly into traffic visualisation overlays in Phase 4.
+
+## Completed Phases (Highlights)
+### Phase 1 - Foundation
+- SQLModel models for devices, interfaces, and links with cascading relationships.
+- FastAPI REST endpoints for CRUD operations plus `/api/seed` bootstrapper.
+- Docker Compose stack (PostgreSQL 16 + backend) with automatic seeding.
+- Vue 3 + Cytoscape topology canvas and seed topology explorer.
+
+### Phase 1.5 - Optical Network
+- Provisioning service (`backend/services/provisioning_service.py`) with 14 device templates and dependency enforcement.
+- Optical link validation (L1-L9 rules) and structured error messaging.
+- Expanded test suite (92 pytest cases) for provisioning, optical validation, and API responses.
+- Documentation: `OPTICAL_NETWORK_IMPLEMENTATION_SUMMARY.md`.
+
+### Phase 2 - Real-Time
+- Socket.IO server embedded in FastAPI (`backend/main.py`) with event helpers.
+- WebSocket clients in Vue components, syncing create/update/delete events.
+- Automatic device/interface/link broadcasts for CRUD flows and provisioning events.
+
+### Phase 3.1 - Management UI
+- Drag-and-drop device positioning persisted via `/api/devices/{id}/position`.
+- Device modal refactor with tabs for interfaces, optical details, and actions.
+- Link management improvements, including simple link creation endpoint.
+
+### Phase 3.2 - Status Override (Completed 15 Oct 2025)
+- Override fields (`status_override`, `override_reason`) added to the `Device` model.
+- PATCH/DELETE override endpoints with validation and WebSocket notifications.
+- Sidebar/manual override UI with clear state cues and undo support.
+
+## Phase 4 - Traffic Engine (Planned)
+- **Scope:** Tariff-based traffic simulation (downstream/upstream), congestion detection with hysteresis, traffic metrics overlay in UI.
+- **Deliverables:** Traffic engine service module, websocket events for traffic updates, UI charts, persistence for historical samples (rolling window).
+- **Dependencies:** Accurate device hierarchy (Phase 1.5), WebSocket streaming (Phase 2), device modal extensibility (Phase 3.1).
+- **Risks:** Performance of traffic calculations under large topologies; need for batching events. Mitigation includes async tasks and throttled emits.
+- **Exit Criteria:** Realistic traffic visualisation across the topology, congestion alerts exposed via sidebar, regression test coverage for tariff rules.
+
+## Phase 5 - Production Hardening (Planned)
+- **Scope:** Authentication (JWT), role-based authorization, audit logging, observability stack (Prometheus/Grafana), automated CI/CD pipeline, deployment runbooks.
+- **Prerequisites:** Traffic engine metrics to feed monitoring dashboards, consolidated API schema from earlier phases.
+- **Exit Criteria:** Production deployment guide complete, security checks in place, uptime targets defined, monitoring dashboards populated.
+
+## Recent Deliverables (Oct 2025)
+- Provisioning service (backend/services/provisioning_service.py)
+- Status override API and UI (backend/api/routes.py, frontend/src/components/DeviceSidebar.vue)
+- Socket.IO event pipeline (backend/main.py, frontend/src/App.vue)
+
+## Forecast & Next Steps
+1. Finalise Phase 4 design docs (traffic data model, websocket payloads).
+2. Implement traffic simulation service and persistence.
+3. Extend Vue UI with congestion badges and traffic charts.
+4. Backfill tests and docs (`docs/11_traffic_engine_and_congestion.md`) before locking the phase.
+
+## Risk Register
+- **Performance:** Traffic engine may need batching to avoid websocket flooding.
+- **Data Freshness:** Override and traffic updates must stay coherent; consider event ordering guarantees.
+- **Documentation Drift:** Ensure traffic engine implementation updates all affected docs before release.
+
+## References
+- `docs/ARCHITECTURE.md` - System design and component responsibilities.
+- `docs/MASTER_ACTION_PLAN.md` - Active tasks, owners, and technical debt.
+- `docs/OPTICAL_NETWORK_IMPLEMENTATION_SUMMARY.md` - Optical provisioning reference.
