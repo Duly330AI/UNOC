@@ -57,16 +57,23 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://unoc:unocpw@localhost:5432/unocdb
         run: |
-          pytest --cov=backend --cov-report=term-missing --cov-fail-under=80
+          pytest --cov=backend --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html:htmlcov --cov-fail-under=80
 
       - name: Build frontend
         run: |
           cd frontend
           npm run build
 
-      - name: Upload coverage (artifact)
+      - name: Upload coverage HTML
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-coverage
+          name: backend-coverage-html
           path: htmlcov
+
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-xml
+          path: coverage.xml
