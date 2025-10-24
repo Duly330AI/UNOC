@@ -1,0 +1,72 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: unoc
+          POSTGRES_PASSWORD: unocpw
+          POSTGRES_DB: unocdb
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U unoc"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install frontend deps
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Lint backend (ruff)
+        run: |
+          python -m pip install ruff
+          ruff check backend || true
+
+      - name: Run backend tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://unoc:unocpw@localhost:5432/unocdb
+        run: |
+          pytest --cov=backend --cov-report=term-missing
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Upload coverage (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: htmlcov
