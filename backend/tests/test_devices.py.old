@@ -1,0 +1,101 @@
+"""
+Test Device CRUD Operations
+"""
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+from sqlmodel import select
+
+from backend.main import app
+from backend.models.core import Device, DeviceType
+
+
+@pytest.mark.asyncio
+async def test_create_device(async_session, override_get_session):
+    """Test creating a device via API"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/api/devices",
+            json={
+                "name": "router1",
+                "device_type": "ROUTER",
+                "x": 100.0,
+                "y": 200.0,
+            },
+        )
+    
+    assert response.status_code == 201
+    data = response.json()
+    
+    assert data["name"] == "router1"
+    assert data["device_type"] == "ROUTER"
+    assert data["status"] == "DOWN"  # Default
+    assert data["x"] == 100.0
+    assert data["y"] == 200.0
+    assert "id" in data
+
+
+@pytest.mark.asyncio
+async def test_list_devices(async_session, override_get_session):
+    """Test listing devices"""
+    # Create test devices directly in DB
+    device1 = Device(name="router1", device_type=DeviceType.ROUTER)
+    device2 = Device(name="switch1", device_type=DeviceType.SWITCH)
+    async_session.add(device1)
+    async_session.add(device2)
+    await async_session.commit()
+    
+    # List via API
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/api/devices")
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert len(data) == 2
+    assert {d["name"] for d in data} == {"router1", "switch1"}
+
+
+@pytest.mark.asyncio
+async def test_delete_device(async_session, override_get_session):
+    """Test deleting a device"""
+    # Create device
+    device = Device(name="router1", device_type=DeviceType.ROUTER)
+    async_session.add(device)
+    await async_session.commit()
+    await async_session.refresh(device)
+    
+    device_id = device.id
+    
+    # Delete via API
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.delete(f"/api/devices/{device_id}")
+    
+    assert response.status_code == 204
+    
+    # Verify deleted
+    result = await async_session.execute(select(Device).where(Device.id == device_id))
+    deleted_device = result.scalar_one_or_none()
+    assert deleted_device is None
+
+
+@pytest.mark.asyncio
+async def test_device_not_found(async_session, override_get_session):
+    """Test 404 for non-existent device"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/api/devices/999")
+    
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()

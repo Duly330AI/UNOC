@@ -1,0 +1,173 @@
+"""
+Tests for simple link creation endpoint
+"""
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from backend.main import app
+
+
+@pytest.mark.asyncio
+async def test_create_simple_link_fiber(async_session, override_get_session):
+    """Test creating a fiber link between two devices"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        # Create two devices first
+        dev_a = await client.post("/api/devices", json={
+            "name": "TestDevice1", "device_type": "ROUTER", "x": 0, "y": 0
+        })
+        dev_b = await client.post("/api/devices", json={
+            "name": "TestDevice2", "device_type": "SWITCH", "x": 100, "y": 100
+        })
+        device_a = dev_a.json()
+        device_b = dev_b.json()
+        
+        # Create link
+        link_data = {
+            "device_a_id": device_a["id"],
+            "device_b_id": device_b["id"],
+            "link_type": "fiber",
+            "status": "UP"
+        }
+        
+        response = await client.post("/api/links/create-simple", json=link_data)
+        assert response.status_code == 200
+        
+        result = response.json()
+        assert "link" in result
+        assert "interface_a" in result
+        assert "interface_b" in result
+        assert "message" in result
+        
+        # Check link
+        link = result["link"]
+        assert link["status"] == "UP"
+        
+        # Check interfaces
+        intf_a = result["interface_a"]
+        intf_b = result["interface_b"]
+        
+        assert intf_a["device_id"] == device_a["id"]
+        assert intf_b["device_id"] == device_b["id"]
+        assert intf_a["interface_type"] == "OPTICAL"  # fiber -> OPTICAL
+        assert intf_b["interface_type"] == "OPTICAL"
+        
+        # Link should connect the two interfaces
+        assert link["a_interface_id"] == intf_a["id"]
+        assert link["b_interface_id"] == intf_b["id"]
+
+
+@pytest.mark.asyncio
+async def test_create_simple_link_copper(async_session, override_get_session):
+    """Test creating a copper link between two devices"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        # Create devices
+        dev_a = await client.post("/api/devices", json={
+            "name": "TestDevice3", "device_type": "ROUTER", "x": 0, "y": 0
+        })
+        dev_b = await client.post("/api/devices", json={
+            "name": "TestDevice4", "device_type": "SWITCH", "x": 100, "y": 100
+        })
+        device_a = dev_a.json()
+        device_b = dev_b.json()
+        
+        link_data = {
+            "device_a_id": device_a["id"],
+            "device_b_id": device_b["id"],
+            "link_type": "copper",
+            "status": "UP"
+        }
+        
+        response = await client.post("/api/links/create-simple", json=link_data)
+        assert response.status_code == 200
+        
+        result = response.json()
+        intf_a = result["interface_a"]
+        intf_b = result["interface_b"]
+        
+        assert intf_a["interface_type"] == "ETHERNET"  # copper -> ETHERNET
+        assert intf_b["interface_type"] == "ETHERNET"
+
+
+@pytest.mark.asyncio
+async def test_create_simple_link_device_not_found(async_session, override_get_session):
+    """Test creating link with non-existent device"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        link_data = {
+            "device_a_id": 99999,
+            "device_b_id": 1,
+            "link_type": "fiber",
+            "status": "UP"
+        }
+        
+        response = await client.post("/api/links/create-simple", json=link_data)
+        assert response.status_code == 404
+        assert "Device A" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_create_simple_link_same_device(async_session, override_get_session):
+    """Test that linking device to itself is rejected"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        # Create device
+        dev = await client.post("/api/devices", json={
+            "name": "TestDevice5", "device_type": "ROUTER", "x": 0, "y": 0
+        })
+        device = dev.json()
+        
+        link_data = {
+            "device_a_id": device["id"],
+            "device_b_id": device["id"],
+            "link_type": "fiber",
+            "status": "UP"
+        }
+        
+        response = await client.post("/api/links/create-simple", json=link_data)
+        assert response.status_code == 400
+        assert "itself" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_create_simple_link_interfaces_auto_named(async_session, override_get_session):
+    """Test that interfaces are auto-named (port1, port2, etc.)"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        # Create devices
+        dev_a = await client.post("/api/devices", json={
+            "name": "TestDevice6", "device_type": "ROUTER", "x": 0, "y": 0
+        })
+        dev_b = await client.post("/api/devices", json={
+            "name": "TestDevice7", "device_type": "SWITCH", "x": 100, "y": 100
+        })
+        device_a = dev_a.json()
+        device_b = dev_b.json()
+        
+        # Create link
+        link_data = {
+            "device_a_id": device_a["id"],
+            "device_b_id": device_b["id"],
+            "link_type": "fiber",
+            "status": "UP"
+        }
+        
+        response = await client.post("/api/links/create-simple", json=link_data)
+        assert response.status_code == 200
+        
+        result = response.json()
+        intf_a = result["interface_a"]
+        
+        # New interface should be named port1 (first interface on device)
+        assert intf_a["name"] == "port1"
