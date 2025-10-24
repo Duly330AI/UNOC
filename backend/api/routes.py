@@ -96,7 +96,11 @@ class ProvisionDeviceResponse(BaseModel):
 
 @api_router.get("/devices", response_model=list[DeviceResponse])
 async def list_devices(session: AsyncSession = Depends(get_session)):
-    """List all devices"""
+    """
+    Return every device currently stored in the topology.
+
+    Response: 200 OK with `DeviceResponse` entries sorted by primary key.
+    """
     result = await session.execute(select(Device))
     devices = result.scalars().all()
     return devices
@@ -104,7 +108,12 @@ async def list_devices(session: AsyncSession = Depends(get_session)):
 
 @api_router.get("/devices/{device_id}", response_model=DeviceResponse)
 async def get_device(device_id: int, session: AsyncSession = Depends(get_session)):
-    """Get single device"""
+    """
+    Fetch a single device by ID.
+
+    Raises:
+        HTTPException 404: When the device is not found.
+    """
     device = await session.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -117,16 +126,22 @@ async def provision_device(
     session: AsyncSession = Depends(get_session),
 ):
     """
-    Provision a device with proper initialization.
-    
-    This endpoint:
-    1. Validates unique name
-    2. Validates upstream dependency (if enabled)
-    3. Creates device with optical attributes
-    4. Auto-creates default interfaces based on device type
-    5. Emits WebSocket event
-    
-    Phase 2.4: Provision API Endpoint
+    Provision a device and return the created record alongside generated interfaces.
+
+    Workflow
+    --------
+    1. Validate that the name is unique via `ProvisioningService._check_name_exists`.
+    2. When `validate_upstream` is true, enforce upstream dependency rules.
+    3. Persist the `Device` including optional optical attributes.
+    4. Auto-create the default interface layout for the device type.
+    5. Emit Socket.IO event `device_created` containing id, name, type, interface count.
+
+    Response:
+        201 Created with `ProvisionDeviceResponse` (device, interfaces, message).
+
+    Raises:
+        HTTPException 400: On duplicate names, missing upstream dependencies, or
+            other provisioning errors surfaced by `ProvisioningService`.
     """
     service = ProvisioningService(session)
     
@@ -171,7 +186,14 @@ async def create_device(
     device_data: DeviceCreate,
     session: AsyncSession = Depends(get_session),
 ):
-    """Create new device"""
+    """
+    Directly create a device without provisioning helpers.
+
+    Intended for low-level operations; the frontend should prefer the provisioning
+    endpoint so interfaces and dependencies are handled automatically.
+
+    Response: 201 Created with `DeviceResponse`.
+    """
     device = Device(**device_data.model_dump())
     session.add(device)
     await session.commit()
@@ -197,7 +219,14 @@ async def update_device_position(
     data: UpdateDevicePositionRequest,
     session: AsyncSession = Depends(get_session)
 ):
-    """Update device position (for drag & drop) - NO WebSocket broadcast to avoid conflicts"""
+    """
+    Update the layout coordinates for a device after drag-and-drop.
+
+    Note: No Socket.IO event is emitted to avoid conflicting live position updates.
+
+    Raises:
+        HTTPException 404: When the device is not found.
+    """
     device = await session.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -220,7 +249,16 @@ async def set_device_status_override(
     data: SetStatusOverrideRequest,
     session: AsyncSession = Depends(get_session)
 ):
-    """Set manual status override for a device"""
+    """
+    Apply a manual override (`UP` or `DOWN`) to a device.
+
+    Persists the override fields and broadcasts `device:updated` so clients can
+    refresh their view. This is the canonical override endpoint used by the UI.
+
+    Raises:
+        HTTPException 400: When `status_override` is not `UP` or `DOWN`.
+        HTTPException 404: When the device is not found.
+    """
     device = await session.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -250,7 +288,14 @@ async def clear_device_status_override(
     device_id: int,
     session: AsyncSession = Depends(get_session)
 ):
-    """Clear manual status override for a device"""
+    """
+    Remove the manual override applied via `PATCH /devices/{id}/override`.
+
+    Broadcasts `device:updated` so subscribers fall back to computed status.
+
+    Raises:
+        HTTPException 404: When the device is not found.
+    """
     device = await session.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -276,7 +321,14 @@ async def get_device_interfaces(
     device_id: int,
     session: AsyncSession = Depends(get_session)
 ):
-    """Get all interfaces for a specific device"""
+    """
+    Return all interfaces that belong to the specified device.
+
+    Response: 200 OK with `InterfaceResponse` entries sorted by creation.
+
+    Raises:
+        HTTPException 404: When the device is not found.
+    """
     device = await session.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -286,27 +338,25 @@ async def get_device_interfaces(
     )
     interfaces = result.scalars().all()
     return interfaces
-    
-    await session.commit()
-    await session.refresh(device)
-    
-    # Emit WebSocket event
-    emit = get_emit_function()
-    await emit("device:updated", device.model_dump(mode='json'))
-    
-    return {
-        "message": "Status override cleared",
-        "device": device.model_dump()
-    }
 
 
 @api_router.post("/devices/{device_id}/override-status")
-async def override_device_status(
+async def override_device_status_legacy(
     device_id: int,
     data: StatusOverrideRequest,
     session: AsyncSession = Depends(get_session)
 ):
-    """Set manual status override for a device"""
+    """
+    Legacy endpoint that accepts `UP`, `DOWN`, or `DEGRADED` overrides.
+
+    Prefer `PATCH /devices/{id}/override` for current workflows, which restricts
+    overrides to `UP`/`DOWN` and mirrors the UI behaviour. This route exists for
+    backwards compatibility with earlier clients.
+
+    Raises:
+        HTTPException 400: When an unsupported status is provided.
+        HTTPException 404: When the device is not found.
+    """
     device = await session.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -333,11 +383,17 @@ async def override_device_status(
 
 
 @api_router.delete("/devices/{device_id}/override-status")
-async def clear_device_status_override(
+async def clear_device_status_override_legacy(
     device_id: int,
     session: AsyncSession = Depends(get_session)
 ):
-    """Clear manual status override"""
+    """
+    Legacy companion to `override_device_status_legacy`. Prefer
+    `DELETE /devices/{id}/override` for new integrations.
+
+    Raises:
+        HTTPException 404: When the device is not found.
+    """
     device = await session.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -360,7 +416,14 @@ async def clear_device_status_override(
 
 @api_router.delete("/devices/{device_id}", status_code=204)
 async def delete_device(device_id: int, session: AsyncSession = Depends(get_session)):
-    """Delete device (CASCADE deletes interfaces and links)"""
+    """
+    Delete a device and cascade-delete its interfaces and links.
+
+    Emits `device:deleted` with the device id so clients can prune local state.
+
+    Raises:
+        HTTPException 404: When the device is not found.
+    """
     device = await session.get(Device, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")

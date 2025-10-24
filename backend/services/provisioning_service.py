@@ -1,40 +1,8 @@
 """
-Provisioning Service - Core Logic for Device Provisioning
-
-PHASE 2: PROVISIONING
-=====================
-
-CONCEPT:
---------
-Provisioning = Process of preparing a device for active operation:
-1. Create device in DB with required attributes
-2. Create default interfaces (mgmt0, etc.)
-3. Assign management IP from pool (IPAM Phase 3)
-4. Validate dependencies (upstream connectivity)
-5. Set initial status
-
-PROVISIONING MATRIX:
--------------------
-Device Type          | Requires Parent? | Auto Interfaces  | Management IP
----------------------|------------------|------------------|---------------
-BACKBONE_GATEWAY     | No               | mgmt0, lo0       | Yes
-CORE_ROUTER          | No               | mgmt0, lo0       | Yes
-EDGE_ROUTER          | Yes (CORE)       | mgmt0, lo0       | Yes
-OLT                  | Yes (POP/EDGE)   | mgmt0, pon0-7    | Yes
-AON_SWITCH           | Yes (POP/EDGE)   | mgmt0, eth0-23   | Yes
-ONT                  | Yes (OLT)        | eth0             | No (uses OLT)
-BUSINESS_ONT         | Yes (OLT)        | eth0-3           | Optional
-AON_CPE              | Yes (AON_SWITCH) | wan0, lan0-3     | No
-POP                  | No               | -                | No (container)
-CORE_SITE            | No               | -                | No (container)
-ODF                  | Optional         | port1-48         | No (passive)
-NVT                  | Optional         | port1-12         | No (passive)
-SPLITTER             | Optional         | in0, out0-31     | No (passive)
-HOP                  | Optional         | port1-8          | No (passive)
-
-LINK TYPE RULES (L1-L9):
-------------------------
-Will be implemented in Phase 2.2 - constants/link_rules.py
+Provisioning service responsible for creating devices with the correct
+relationships, interfaces, and optical metadata. The logic lives behind
+`POST /api/devices/provision` and keeps upstream dependencies, interface
+layouts, and unique naming guarantees consistent across the topology.
 """
 
 from typing import Optional
@@ -46,18 +14,36 @@ from backend.models.core import Device, DeviceType, Interface, InterfaceType, St
 
 
 class ProvisioningError(Exception):
-    """Raised when provisioning fails"""
-    pass
+    """Raised when provisioning cannot proceed (validation or dependency failure)."""
 
 
 class ProvisioningService:
     """
-    Service for provisioning devices with proper configuration.
-    
-    Phase 2.1: Basic skeleton with interface creation
-    Phase 2.2: Link type validation
-    Phase 2.3: Dependency validation (upstream connectivity)
-    Phase 2.4: IPAM integration (Phase 3)
+    Provision a device and its default interfaces while enforcing topology rules.
+
+    Design notes
+    ------------
+    * Validates device name uniqueness before persisting.
+    * Enforces upstream dependencies (for example an OLT requires an EDGE router).
+    * Applies optional optical attributes directly to the `Device` row.
+    * Auto-generates interface sets that match hardware expectations (PON, Ethernet).
+    * Returns SQLModel entities so API responses can reuse the same schema.
+
+    Usage
+    -----
+        service = ProvisioningService(session)
+        device = await service.provision_device(
+            name="olt-001",
+            device_type=DeviceType.OLT,
+            validate_upstream=True,
+            tx_power_dbm=5.0,
+        )
+
+    Error handling
+    --------------
+    Raises :class:`ProvisioningError` when a name already exists, an upstream
+    prerequisite is missing (if `validate_upstream=True`), or a provisioning
+    recipe is undefined for the requested device type.
     """
     
     def __init__(self, session: AsyncSession):
@@ -74,28 +60,31 @@ class ProvisioningService:
         **optical_attrs,
     ) -> Device:
         """
-        Provision a device with proper initialization.
-        
+        Persist a device row and create its default interfaces.
+
         Args:
-            name: Device name (must be unique)
-            device_type: Type of device
-            parent_container_id: Optional parent container (POP, CORE_SITE)
-            validate_upstream: Whether to validate upstream dependency (default True)
-            x, y: Coordinates
-            **optical_attrs: tx_power_dbm, sensitivity_min_dbm, insertion_loss_db
-        
+            name: Unique device name.
+            device_type: Enum describing the hardware role.
+            parent_container_id: Optional POP/CORE_SITE container relationship.
+            validate_upstream: Enforce upstream dependencies when True.
+            x: Initial X coordinate for the topology canvas.
+            y: Initial Y coordinate for the topology canvas.
+            **optical_attrs: Optional optical fields (`tx_power_dbm`,
+                `sensitivity_min_dbm`, `insertion_loss_db`) forwarded to the model.
+
         Returns:
-            Provisioned device with interfaces
-        
+            Device: Persisted SQLModel instance (interfaces committed as well).
+
         Raises:
-            ProvisioningError: If provisioning fails
+            ProvisioningError: When the name already exists or upstream validation
+                fails.
         """
         # Check if name already exists
         existing = await self._check_name_exists(name)
         if existing:
             raise ProvisioningError(f"Device with name '{name}' already exists")
         
-        # Phase 2.3: Validate upstream dependency
+        # Enforce upstream dependency rules when requested
         if validate_upstream:
             await self._validate_upstream_dependency(device_type)
         
@@ -103,7 +92,7 @@ class ProvisioningService:
         device = Device(
             name=name,
             device_type=device_type,
-            status=Status.DOWN,  # Will be set to UP after validation in Phase 2.3
+            status=Status.DOWN,  # Devices start DOWN until operational checks promote them
             parent_container_id=parent_container_id,
             x=x,
             y=y,
@@ -119,7 +108,7 @@ class ProvisioningService:
         return device
     
     async def _check_name_exists(self, name: str) -> bool:
-        """Check if device name already exists"""
+        """Return True when a device with the provided name already exists."""
         result = await self.session.execute(
             select(Device).where(Device.name == name)
         )
@@ -127,23 +116,16 @@ class ProvisioningService:
     
     async def _validate_upstream_dependency(self, device_type: DeviceType) -> None:
         """
-        Validate that required upstream devices exist.
-        
-        Phase 2.3: Dependency Validation
-        
-        Rules:
-        - EDGE_ROUTER requires at least one CORE_ROUTER or BACKBONE_GATEWAY
-        - OLT requires at least one EDGE_ROUTER
-        - AON_SWITCH requires at least one EDGE_ROUTER
-        - ONT requires at least one OLT
-        - BUSINESS_ONT requires at least one OLT
-        - AON_CPE requires at least one AON_SWITCH
-        
-        Args:
-            device_type: Type of device being provisioned
-        
+        Ensure the required upstream device types exist before provisioning.
+
+        Examples:
+        * EDGE routers require an upstream CORE router or BACKBONE gateway.
+        * OLT devices require at least one EDGE router.
+        * ONT/BUSINESS_ONT devices require an OLT.
+        * AON_SWITCH devices require an EDGE router; AON_CPE devices require an AON switch.
+
         Raises:
-            ProvisioningError: If required upstream device does not exist
+            ProvisioningError: When no qualifying upstream device is present.
         """
         # Define upstream requirements
         upstream_requirements = {
@@ -194,10 +176,10 @@ class ProvisioningService:
     
     async def _create_default_interfaces(self, device: Device) -> list[Interface]:
         """
-        Create default interfaces based on device type.
-        
-        Phase 2.1: Basic implementation
-        Phase 2.3: Will add validation for upstream connectivity
+        Populate the standard interface layout for the given device type.
+
+        Returns:
+            list[Interface]: Interfaces committed for this device in creation order.
         """
         interfaces = []
         
@@ -361,7 +343,7 @@ class ProvisioningService:
         return interfaces
     
     async def get_device_interfaces(self, device_id: int) -> list[Interface]:
-        """Get all interfaces for a device"""
+        """Return every interface attached to the provided device ID."""
         result = await self.session.execute(
             select(Interface).where(Interface.device_id == device_id)
         )
