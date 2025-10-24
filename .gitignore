@@ -7,29 +7,104 @@ __pycache__/
 env/
 venv/
 .venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
 dist/
 build/
+.next/
+out/
 
-# IDE
+# IDE & Editors
 .vscode/
 .idea/
+.DS_Store
 *.swp
 *.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
+.env.local
+.env.*.local
 
-# Testing
+# Testing & Coverage
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
-*.log
+.tox/
+.hypothesis/
+.nyc_output/
 
-# Database
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Database & Local Data
 *.db
 *.sqlite
-
-# Docker
-*.env
+*.sqlite3
+.env
+.env.local
+.env.*.local
+local.db
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# IDE temp files
+*.swp
+*.swo
+*~
+.classpath
+.c9/
+*.launch
+.settings/
+.sublime-workspace
+
+# Misc
+.cache/
+.parcel-cache/
+.eslintcache
+.turbo/
+turbo.json
+.ruby-version
