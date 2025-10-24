@@ -1,12 +1,13 @@
 version: '3.8'
 
 services:
+  # PostgreSQL 16 - primary data store for devices, interfaces, links, overrides
   postgres:
     image: postgres:16-alpine
     container_name: unoc-postgres
     environment:
-      POSTGRES_USER: unoc
-      POSTGRES_PASSWORD: unocpw
+      POSTGRES_USER: unoc            # Change in production
+      POSTGRES_PASSWORD: unocpw      # Change in production
       POSTGRES_DB: unocdb
     ports:
       - "5432:5432"
@@ -18,15 +19,16 @@ services:
       timeout: 5s
       retries: 5
 
+  # FastAPI backend - REST API + provisioning + WebSocket gateway
   backend:
-    build: .
+    build: .                         # Uses Dockerfile at repo root
     container_name: unoc-backend
     ports:
       - "5001:5001"
     environment:
       DATABASE_URL: postgresql+asyncpg://unoc:unocpw@postgres:5432/unocdb
     volumes:
-      - ./backend:/app/backend
+      - ./backend:/app/backend       # Mount code for live reload in dev
       - ./run.py:/app/run.py
     depends_on:
       postgres:
