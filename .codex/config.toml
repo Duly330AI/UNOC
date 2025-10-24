@@ -1,0 +1,318 @@
+# ============================================================================
+# UNOC Documentation Audit & Cleanup Configuration (2025-10-24)
+# ============================================================================
+# Purpose: Systematic documentation audit and update for FTTH Emulator
+# Scope: Backend + Frontend + Architecture + Deployment
+# ============================================================================
+
+model = "gpt-5-codex"
+model_reasoning_effort = "medium"
+
+# ============================================================================
+# PHASE-BASED EXECUTION PLAN
+# ============================================================================
+# Phase 1: Critical Core Docs (README, ROADMAP, Architecture)
+# Phase 2: Backend API & Services Documentation
+# Phase 3: Frontend & UI Documentation
+# Phase 4: Deployment & Operations
+# Phase 5: Tests & Quality Metrics
+
+[execution_phases]
+
+  # PHASE 1: Core Documentation (Priority: CRITICAL)
+  [execution_phases.phase_1_core]
+  name = "Core Documentation Audit"
+  priority = "CRITICAL"
+  estimated_effort = "2-3h"
+  files = [
+    "README.md",                          # Main project overview
+    "ROADMAP.md",                         # Feature roadmap & status
+    "docs/ARCHITECTURE.md",               # System architecture
+    "docs/MASTER_ACTION_PLAN.md",         # Implementation tracking
+    ".github/copilot-instructions.md",    # Copilot guidelines
+  ]
+  checks = [
+    "Project description accurate & up-to-date",
+    "Roadmap reflects current phase (Phase 4: Traffic)",
+    "Architecture aligns with implementation",
+    "Links & references are valid",
+    "TOCs are complete & accurate",
+  ]
+
+  # PHASE 2: Backend Documentation (Priority: HIGH)
+  [execution_phases.phase_2_backend]
+  name = "Backend API & Services Documentation"
+  priority = "HIGH"
+  estimated_effort = "3-4h"
+  files = [
+    "docs/OPTICAL_NETWORK_IMPLEMENTATION_SUMMARY.md",
+    "docs/01_domain_model.md",
+    "docs/02_status_propagation.md",
+    "docs/03_ipam_and_status.md",
+    "docs/04_signal_budget_and_overrides.md",
+    "docs/11_traffic_engine_and_congestion.md",
+    "backend/api/routes.py",              # API endpoints
+    "backend/services/provisioning_service.py",  # Provisioning logic
+  ]
+  checks = [
+    "API endpoints documented with request/response",
+    "Service layer logic explained",
+    "Database models match documentation",
+    "Error handling documented",
+    "Examples include actual code snippets",
+  ]
+
+  # PHASE 3: Frontend Documentation (Priority: MEDIUM)
+  [execution_phases.phase_3_frontend]
+  name = "Frontend & UI Documentation"
+  priority = "MEDIUM"
+  estimated_effort = "2-3h"
+  files = [
+    "docs/05_realtime_and_ui_model.md",
+    "frontend/src/README.md",             # Frontend structure
+    "frontend/src/components/README.md",  # Component documentation
+  ]
+  checks = [
+    "Component hierarchy documented",
+    "State management patterns explained",
+    "WebSocket integration clear",
+    "UI responsiveness documented",
+    "Examples for common tasks",
+  ]
+
+  # PHASE 4: Deployment & Operations (Priority: HIGH)
+  [execution_phases.phase_4_deployment]
+  name = "Deployment & Operations"
+  priority = "HIGH"
+  estimated_effort = "2h"
+  files = [
+    "docs/DEPLOYMENT.md",                 # Deployment guide
+    "docker-compose.yml",                 # Docker setup
+    "ops/RUNBOOK.md",                     # Operations runbook
+  ]
+  checks = [
+    "Deployment steps are current",
+    "Environment variables documented",
+    "Docker setup verified",
+    "Troubleshooting guide included",
+    "Production checklist present",
+  ]
+
+  # PHASE 5: Quality Metrics (Priority: MEDIUM)
+  [execution_phases.phase_5_quality]
+  name = "Tests, Coverage & Quality"
+  priority = "MEDIUM"
+  estimated_effort = "1-2h"
+  files = [
+    "docs/TESTING.md",
+    "pytest.ini",
+    ".coverage*",
+    "backend/tests/",
+  ]
+  checks = [
+    "Test count accurate in docs",
+    "Coverage percentage current",
+    "Test strategy documented",
+    "CI/CD pipeline documented",
+    "Quality gates defined",
+  ]
+
+# ============================================================================
+# SCOPE: Files to Include/Exclude
+# ============================================================================
+
+[scope]
+include_patterns = [
+  "*.md",                    # All markdown files
+  "docs/**",                 # All docs
+  ".github/**",              # GitHub actions
+  "backend/**/*.py",         # Backend Python (for docstrings)
+  "frontend/**/*.vue",       # Frontend components
+]
+
+exclude_patterns = [
+  "node_modules",
+  "__pycache__",
+  ".git",
+  ".pytest_cache",
+  "htmlcov",
+  "*.log",
+  "dist",
+  "build",
+  ".env*",
+  "migrations",
+  "backupdocs",  # OLD: Don't include backup docs
+]
+
+# ============================================================================
+# VERIFICATION CHECKLIST
+# ============================================================================
+
+[verification]
+
+# Current State (Oct 24, 2025)
+[verification.current_state]
+project_phase = "Phase 3.2: Status Override (Complete)"
+last_major_update = "2025-10-15"
+features_complete = "80%"
+test_count = "92+ (Provisioning phase)"
+coverage = "Variable by module"
+documentation_coverage = "30-40%"
+
+# What to Check & Update
+[verification.checklist]
+readme = [
+  "☐ Feature status (Provisioning implemented, Traffic planned)",
+  "☐ Architecture overview current",
+  "☐ Quick start guide functional",
+  "☐ Links to detailed docs valid",
+  "☐ Tech stack accurate (FastAPI, Vue 3, PostgreSQL, etc.)",
+]
+
+roadmap = [
+  "☐ Phase 1-3.2 marked COMPLETE",
+  "☐ Phase 4 (Traffic) scope clear",
+  "☐ Phase 5 (Production) placeholder",
+  "☐ Timeline estimates reasonable",
+  "☐ Dependencies between phases documented",
+]
+
+architecture = [
+  "☐ System diagram current",
+  "☐ Data flow documented",
+  "☐ Component relationships accurate",
+  "☐ Technology choices explained",
+  "☐ Scalability considerations noted",
+]
+
+api_docs = [
+  "☐ All /api/devices/* endpoints documented",
+  "☐ POST /devices/provision endpoint explained",
+  "☐ Request/response schemas shown",
+  "☐ Error codes listed",
+  "☐ Authentication requirements clear",
+]
+
+backend_services = [
+  "☐ ProvisioningService documented",
+  "☐ StatusService architecture explained",
+  "☐ OpticalService (planned) scope defined",
+  "☐ IPAM integration points clear",
+  "☐ Event emission documented",
+]
+
+frontend_components = [
+  "☐ DeviceSidebar tabs documented",
+  "☐ Interfaces list component explained",
+  "☐ WebSocket integration clear",
+  "☐ State management pattern shown",
+  "☐ Props & events documented",
+]
+
+deployment = [
+  "☐ Local development setup updated",
+  "☐ Docker setup verified",
+  "☐ Environment variables documented",
+  "☐ Database initialization steps clear",
+  "☐ Troubleshooting section helpful",
+]
+
+testing = [
+  "☐ Test structure documented",
+  "☐ Running tests instructions clear",
+  "☐ Coverage reports explained",
+  "☐ CI/CD pipeline documented",
+  "☐ Test data/fixtures documented",
+]
+
+# ============================================================================
+# ISSUES TO FIX
+# ============================================================================
+
+[known_issues]
+
+# Documentation Gaps
+gaps = [
+  "Missing /api/devices/{id}/interfaces endpoint docs",
+  "Status propagation algorithm not documented",
+  "MAC allocation strategy not explained",
+  "IPAM pool design not documented",
+  "Link properties modal UI not documented",
+  "Traffic engine v2 algorithm not detailed",
+  "Optical path resolution algorithm not documented",
+]
+
+# Outdated Information
+outdated = [
+  "README shows Phase 1 only (should show Phase 3.2)",
+  "ROADMAP missing recent completions",
+  "Architecture diagram missing optical simulation",
+  "API docs don't mention provisioning endpoint",
+  "Frontend docs mention old components",
+]
+
+# Missing Documentation
+missing = [
+  "API Error Codes Reference",
+  "Database Schema Documentation",
+  "Provisioning Flow Diagram",
+  "Status Propagation Algorithm",
+  "Traffic Generation Algorithm",
+  "Optical Simulation Details",
+  "WebSocket Message Format",
+  "Frontend Component Library",
+  "Testing Strategy",
+  "Performance Tuning Guide",
+]
+
+# ============================================================================
+# OUTPUT & DELIVERY
+# ============================================================================
+
+[output]
+format = "markdown"
+output_dir = "docs"
+group_by = "phase"
+include_timestamps = true
+include_change_log = true
+
+# Generate summaries after each phase
+summary_template = """
+## Phase {phase} Summary
+
+**Files Updated:** {count}
+**Issues Fixed:** {fixed}
+**New Documentation:** {new_docs}
+**Review Status:** {status}
+
+### Checklist
+{checklist}
+
+### Next Steps
+{next_steps}
+"""
+
+# ============================================================================
+# INTERACTION GUIDELINES FOR CODEX
+# ============================================================================
+
+[codex_guidelines]
+tone = "technical, clear, direct"
+audience = "developers, devops engineers, architects"
+prefer_examples = true
+code_snippets_required = true
+diagrams_as = "markdown tables or ASCII art"
+cross_references = true
+version_awareness = true
+
+# ============================================================================
+# SUCCESS CRITERIA
+# ============================================================================
+
+[success_criteria]
+all_files_reviewed = "100% of scope files audited"
+broken_links_fixed = "0 broken links in docs"
+code_examples_tested = "All code examples validated"
+consistency_checked = "Terminology consistent across docs"
+completeness_target = "95% documentation coverage"
+readability_score = ">= 8/10 (Flesch-Kincaid)"
