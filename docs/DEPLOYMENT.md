@@ -50,6 +50,61 @@ docker compose down -v     # drops volumes, data erased
 docker compose up -d
 ```
 
+## Wiring `.env` into CI/CD and Deployment Pipelines
+
+The Compose configuration now supports reading environment variables from a `.env` file. Copy the provided template:
+
+```bash
+cp .env.example .env
+```
+
+In local development this file is consumed by `docker compose` (we added `env_file: - .env` to the services). For pipeline/staging deployments, do not commit `.env` — instead map values into your CI secrets and inject them as environment variables during the workflow run. Example GitHub Actions template: `.github/workflows/deploy_staging.yml` shows how to map GitHub Secrets into job-level environment variables (e.g. `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DATABASE_URL`).
+
+Example (high level):
+
+```yaml
+env:
+   POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+   POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+   DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+When running `docker compose` on your staging/host machine, create `/opt/unoc/.env` from your secret store or copy from CI securely — avoid committing secrets to the repository.
+
+## Automated Backups (Staging)
+
+We provide a small optional backup pattern you can enable in staging. The `docker-compose.yml` contains a commented `db-backup` service which runs periodic `pg_dump` to a mounted `backups:` volume. To enable it:
+
+1. Create a backups volume in `docker-compose.yml` (uncomment the `backups:` volume entry).
+2. Uncomment the `db-backup` service block.
+3. Ensure your `.env` contains `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`.
+
+Alternatively, run backups from the host or a scheduled job using the included script `scripts/backup_db.sh`:
+
+```bash
+# Run one-off backup to local folder
+POSTGRES_HOST=localhost POSTGRES_USER=unoc POSTGRES_DB=unocdb POSTGRES_PASSWORD=unocpw ./scripts/backup_db.sh ./backups
+```
+
+Crontab example on a Linux host to run nightly at 02:15:
+
+```cron
+15 2 * * * /usr/bin/env POSTGRES_HOST=localhost POSTGRES_USER=unoc POSTGRES_DB=unocdb POSTGRES_PASSWORD="$SECRET_PW" /opt/unoc/scripts/backup_db.sh /var/backups/unoc
+```
+
+Place backups on durable storage (S3, NFS, or off-host archive) and test restore procedures regularly (see `ops/RUNBOOK.md`).
+
+## Monitoring & Alerting (Staging)
+
+Basic monitoring checklist to implement in staging:
+
+- Export backend metrics (if instrumented) to Prometheus and add Grafana dashboards.
+- Monitor PostgreSQL health (`pg_isready`) and disk usage.
+- Alert on high CPU, memory, or WebSocket disconnect rates.
+- Add synthetic tests that call `/api/health` and perform a sample provisioning flow; failing tests should raise an alert.
+
+See `ops/RUNBOOK.md` for daily/weekly checklists and incident playbooks.
+
 ## Production Deployment
 1. **Prepare environment variables** (`.env` or secret manager):
    - `DATABASE_URL` (e.g., `postgresql+asyncpg://unoc:strongpw@postgres:5432/unocdb`)

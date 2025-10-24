@@ -5,10 +5,12 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: unoc-postgres
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: unoc            # Change in production
-      POSTGRES_PASSWORD: unocpw      # Change in production
-      POSTGRES_DB: unocdb
+      POSTGRES_USER: ${POSTGRES_USER:-unoc}            # Change in production via .env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-unocpw}  # Change in production via .env
+      POSTGRES_DB: ${POSTGRES_DB:-unocdb}
     ports:
       - "5432:5432"
     volumes:
@@ -25,8 +27,11 @@ services:
     container_name: unoc-backend
     ports:
       - "5001:5001"
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://unoc:unocpw@postgres:5432/unocdb
+      # Prefer DATABASE_URL from .env for production/staging. Fallback to local compose value.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://unoc:unocpw@postgres:5432/unocdb}
     volumes:
       - ./backend:/app/backend       # Mount code for live reload in dev
       - ./run.py:/app/run.py
@@ -35,5 +40,20 @@ services:
         condition: service_healthy
     command: python -m uvicorn backend.main:app --host 0.0.0.0 --port 5001 --reload
 
+  # Optional: database backup service for staging (disabled by default)
+  # Uncomment and enable in staging to run periodic pg_dumps into a mounted backup folder.
+  # This is intentionally conservative: runs in the container, requires postgres credentials
+  # in .env and writes SQL dumps to the `backups` volume.
+  #db-backup:
+  #  image: postgres:16-alpine
+  #  container_name: unoc-db-backup
+  #  env_file:
+  #    - .env
+  #  depends_on:
+  #    - postgres
+  #  volumes:
+  #    - backups:/backups
+  #  command: ["/bin/sh", "-c", "while true; do pg_dump -h postgres -U ${POSTGRES_USER} ${POSTGRES_DB} > /backups/unoc_$(date +%F_%T).sql; sleep 86400; done"]
 volumes:
   postgres_data:
+  # backups:  # Enable when using db-backup above
